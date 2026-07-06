@@ -16,7 +16,7 @@ from .entity import OctopusIntelligentGoEntity
 
 TARGET_CHARGE_DESCRIPTION = EntityDescription(
     key="target_charge_percentage",
-    name="Target charge",
+    name="Target charge percentage",
 )
 
 
@@ -38,7 +38,7 @@ class OctopusIntelligentGoTargetChargeNumber(OctopusIntelligentGoEntity, NumberE
     _attr_native_max_value = 100.0
     _attr_native_step = 1.0
     _attr_native_unit_of_measurement = PERCENTAGE
-    _attr_mode = NumberMode.SLIDER
+    _attr_mode = NumberMode.BOX
 
     def __init__(self, coordinator: OctopusIntelligentGoCoordinator) -> None:
         super().__init__(coordinator, TARGET_CHARGE_DESCRIPTION)
