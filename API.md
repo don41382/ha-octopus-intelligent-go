@@ -1,10 +1,9 @@
 # Octopus Intelligent Go / SmartFlex API Notes
 
 These notes document the unofficial Kraken GraphQL API surface observed from the
-Octopus Energy Android app and the local `octopus_tesla.py` helper. The API is
-not public and can change without notice, so Home Assistant entities should be
-implemented defensively and only enabled when a device exposes the required
-fields.
+Octopus Energy Android app. The API is not public and can change without notice,
+so Home Assistant entities should be implemented defensively and only enabled
+when a device exposes the required fields.
 
 The public integration name is **Octopus Intelligent Go** because that matches
 the customer-facing EV charging product. The Kraken GraphQL schema and operation
@@ -43,8 +42,8 @@ user-agent: OctoAppClient/Android/4.134.0 (Android 16; emu64a)
 content-type: application/json
 ```
 
-Login requests also include `x-kraken-flapjack`. The helper generates a random
-hex value when one is not supplied.
+Login requests also include `x-kraken-flapjack`. The integration generates a
+random hex value when one is not supplied.
 
 ## Authentication
 
@@ -228,8 +227,7 @@ mutation SetSmartFlexDevicePreferences($input: SmartFlexDevicePreferencesInput!)
 }
 ```
 
-The current helper writes the same `max` value for all seven weekdays. A Home
-Assistant number entity can start with that same behavior.
+The current integration writes the same `max` value for all seven weekdays.
 
 ### Start or Cancel Immediate Charging
 
@@ -408,7 +406,7 @@ The operation string is usually near a method returning `Ljava/lang/String;`.
 For each new data point:
 
 1. Confirm the operation exists in the APK or in a live app capture.
-2. Run it against a real account with a test script or temporary client method.
+2. Run it against a real account with a temporary client method.
 3. Record the response for at least one supported device.
 4. Decide whether the field is read-only, writable, or diagnostic.
 5. Add Home Assistant entities only when the device response includes the
