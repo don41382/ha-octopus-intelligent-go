@@ -1,0 +1,34 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Octopus Intelligent Go",
+        "description": "Sign in once with your Octopus account. The password is not stored; Home Assistant stores only the refresh token returned by Kraken.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Octopus Intelligent Go",
+        "description": "Sign in again so Home Assistant can refresh the stored Octopus Intelligent Go token.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the Octopus Intelligent Go API.",
+      "invalid_auth": "Invalid Octopus credentials.",
+      "no_accounts": "No Octopus accounts were found for this login.",
+      "no_devices": "No compatible Intelligent Go devices were found for this account.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This Intelligent Go device is already configured.",
+      "reauth_successful": "Reauthentication was successful.",
+      "unknown": "The Home Assistant config entry was not found."
+    }
+  }
+}
