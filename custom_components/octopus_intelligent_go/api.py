@@ -493,9 +493,15 @@ def _errors_are_auth_related(errors: Any) -> bool:
         description = str(extensions.get("errorDescription") or "").upper()
         validation_errors = extensions.get("validationErrors") or []
 
-        if error_code == "KT-CT-1138":
+        if error_code in {"KT-CT-1124", "KT-CT-1138"}:
             return True
         if "AUTH" in error_type or "UNAUTHENTICATED" in error_code:
+            return True
+        if "TOKEN" in message or "TOKEN" in description:
+            return True
+        if "JWT" in message or "JWT" in description:
+            return True
+        if "EXPIRED" in message or "EXPIRED" in description:
             return True
         if "CREDENTIAL" in message or "CREDENTIAL" in description:
             return True
