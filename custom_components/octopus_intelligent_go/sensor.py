@@ -16,7 +16,8 @@ from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .coordinator import OctopusIntelligentGoCoordinator, IntelligentGoData
+from .coordinator import OctopusIntelligentGoCoordinator
+from .data import IntelligentGoData
 from .entity import OctopusIntelligentGoEntity
 
 

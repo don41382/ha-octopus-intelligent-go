@@ -12,6 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .api import OctopusIntelligentGoApiError, OctopusIntelligentGoAuthError
 from .const import DOMAIN
 from .coordinator import OctopusIntelligentGoCoordinator
+from .data import immediate_charge_action, immediate_charge_icon, immediate_charge_name
 from .entity import OctopusIntelligentGoEntity
 
 IMMEDIATE_CHARGE_DESCRIPTION = ButtonEntityDescription(
@@ -40,20 +41,16 @@ class OctopusIntelligentGoImmediateChargeButton(OctopusIntelligentGoEntity, Butt
     @property
     def name(self) -> str:
         """Return an action-oriented name."""
-        if self._immediate_charge_active:
-            return "Stop Immediate"
-        return "Start Immediate"
+        return immediate_charge_name(self._immediate_charge_active)
 
     @property
     def icon(self) -> str:
         """Return a play/stop icon matching the next action."""
-        if self._immediate_charge_active:
-            return "mdi:stop-circle-outline"
-        return "mdi:play-circle-outline"
+        return immediate_charge_icon(self._immediate_charge_active)
 
     async def async_press(self) -> None:
         """Start or cancel immediate charging."""
-        action = "CANCEL" if self._immediate_charge_active else "BOOST"
+        action = immediate_charge_action(self._immediate_charge_active)
         try:
             await self.coordinator.client.async_update_boost_charge(
                 device_id=self.coordinator.device_id,
