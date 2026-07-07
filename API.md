@@ -150,8 +150,9 @@ For the first implementation, expose only these entities:
 | Entity | Home Assistant type | API operation | Field/action |
 | --- | --- | --- | --- |
 | Target/max charge percentage | `number` | `GetSmartFlexDevicePreferences`, `SetSmartFlexDevicePreferences` | Read/write schedule `max` percentage |
-| Start immediate charge | `button` or `switch` | `FlexUpdateBoostCharge` | `action: BOOST` |
-| Cancel immediate charge | `button` or `switch` | `FlexUpdateBoostCharge` | `action: CANCEL` |
+| Start/Stop Immediate | `button` | `GetSmartFlexDeviceState`, `FlexUpdateBoostCharge` | Write `action: BOOST` or `action: CANCEL` depending on current state |
+| Start Immediate Charge | service | `FlexUpdateBoostCharge` | Always write `action: BOOST` |
+| Cancel Immediate Charge | service | `FlexUpdateBoostCharge` | Always write `action: CANCEL` |
 | Current charging/device state | `sensor` | `GetSmartFlexDeviceState` or `GetSmartFlexDevicesStates` | `status.currentState` |
 | Current state of charge | `sensor` | `GetSmartFlexDeviceChargeCapability` | `status.stateOfCharge.value` |
 | Current vehicle charge limit | `sensor` | `GetSmartFlexDeviceChargeCapability` | `status.stateOfChargeLimit.upperSocLimit` |

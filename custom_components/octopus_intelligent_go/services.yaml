@@ -1,0 +1,23 @@
+start_immediate_charge:
+  name: Start Immediate Charge
+  description: Always ask Octopus to start immediate charging for one configured Intelligent Go device.
+  fields:
+    device_id:
+      required: true
+      name: Device
+      description: The Home Assistant device to control. Raw Kraken / SmartFlex device IDs are also accepted in YAML.
+      selector:
+        device:
+          integration: octopus_intelligent_go
+
+cancel_immediate_charge:
+  name: Cancel Immediate Charge
+  description: Always ask Octopus to cancel immediate charging for one configured Intelligent Go device.
+  fields:
+    device_id:
+      required: true
+      name: Device
+      description: The Home Assistant device to control. Raw Kraken / SmartFlex device IDs are also accepted in YAML.
+      selector:
+        device:
+          integration: octopus_intelligent_go

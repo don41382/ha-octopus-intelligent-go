@@ -29,6 +29,39 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+IMMEDIATE_CHARGE_ACTIVE_STATES = {
+    "BUMP_CHARGE",
+    "BUMP_CHARGE_ACTIVE",
+    "BUMP_CHARGING",
+    "BOOST",
+    "BOOST_ACTIVE",
+    "BOOST_CHARGE",
+    "BOOST_CHARGE_ACTIVE",
+    "BOOST_CHARGING",
+    "BOOST_IN_PROGRESS",
+    "BOOSTING",
+    "IMMEDIATE_CHARGE",
+    "IMMEDIATE_CHARGE_ACTIVE",
+    "IMMEDIATE_CHARGING",
+}
+
+IMMEDIATE_CHARGE_INACTIVE_STATES = {
+    "AVAILABLE",
+    "AWAITING_DISPATCH",
+    "DISCONNECTED",
+    "IDLE",
+    "NOT_AT_HOME",
+    "NOT_AVAILABLE",
+    "PLANNED",
+    "PLUGGED_IN",
+    "READY",
+    "SMART_CONTROL_NOT_AVAILABLE",
+    "SMART_CONTROL_AVAILABLE",
+    "SMART_CONTROL_OFF",
+    "SUSPENDED",
+    "UNAVAILABLE",
+}
+
 
 @dataclass
 class IntelligentGoData:
@@ -63,6 +96,24 @@ class IntelligentGoData:
             return None
         value = status.get("currentState") or status.get("current")
         return value if isinstance(value, str) else None
+
+    @property
+    def immediate_charge_active(self) -> bool | None:
+        """Return whether immediate charging appears active from device state."""
+        state = _normalize_state(self.current_state)
+        if state is None:
+            return None
+        if state in IMMEDIATE_CHARGE_ACTIVE_STATES:
+            return True
+        if state in IMMEDIATE_CHARGE_INACTIVE_STATES:
+            return False
+        if "BOOST" in state:
+            return not any(part in state for part in ("CANCEL", "STOP", "ENDED", "FAILED"))
+        if "BUMP" in state:
+            return not any(part in state for part in ("CANCEL", "STOP", "ENDED", "FAILED"))
+        if "IMMEDIATE" in state:
+            return not any(part in state for part in ("CANCEL", "STOP", "ENDED", "FAILED"))
+        return False
 
     @property
     def state_of_charge(self) -> float | None:
@@ -141,3 +192,10 @@ def _as_float(value: Any) -> float | None:
         except ValueError:
             return None
     return None
+
+
+def _normalize_state(value: str | None) -> str | None:
+    if not isinstance(value, str):
+        return None
+    state = value.strip().upper()
+    return state or None

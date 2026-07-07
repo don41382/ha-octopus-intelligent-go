@@ -9,8 +9,7 @@ immediate charging.
 ## Features
 
 - Set the target charge percentage
-- Start immediate charging
-- Cancel immediate charging
+- Start or stop immediate charging with one action button
 - Read the current charging/device state
 - Read the current vehicle state of charge
 - Read the current vehicle charge limit
@@ -73,11 +72,29 @@ first compatible Intelligent Go device returned by the API.
 | Entity | Type | Description |
 | --- | --- | --- |
 | Target charge percentage | Number | Sets the desired maximum charge percentage |
-| Start immediate charge | Button | Starts immediate charging |
-| Cancel immediate charge | Button | Cancels immediate charging |
+| Start/Stop Immediate | Button | Shows Start Immediate or Stop Immediate depending on current state |
 | State | Sensor | Current charging state |
 | State of charge | Sensor | Current vehicle battery percentage |
 | Vehicle charge limit | Sensor | Current vehicle-side charge limit |
+
+## Automation Services
+
+For automations, use the deterministic services instead of the smart button:
+
+```yaml
+action: octopus_intelligent_go.start_immediate_charge
+data:
+  device_id: YOUR_HOME_ASSISTANT_DEVICE_ID
+```
+
+```yaml
+action: octopus_intelligent_go.cancel_immediate_charge
+data:
+  device_id: YOUR_HOME_ASSISTANT_DEVICE_ID
+```
+
+The `device_id` is the Home Assistant device registry ID selected by the
+automation UI. Raw Kraken/SmartFlex device IDs are also accepted in YAML.
 
 ## Troubleshooting
 
@@ -87,6 +104,16 @@ missing, hard-refresh the browser or clear Home Assistant's frontend cache.
 Immediate charging can fail if Octopus reports that the vehicle is unplugged or
 not at home. In that case, the service error should include the refusal reason
 returned by Kraken.
+
+## Disclaimer
+
+This integration can change charging preferences and start or stop immediate
+charging. Use it at your own risk.
+
+The project is provided without warranty. The maintainers are not responsible
+for charging costs, missed charging schedules, vehicle or charger behavior,
+battery impact, account issues, service interruptions, or any other problems
+caused directly or indirectly by using this integration.
 
 ## Notes
 
