@@ -60,9 +60,20 @@ Add the integration from:
 Settings -> Devices & services -> Add integration -> Octopus Intelligent Go
 ```
 
-Sign in with your Octopus Energy credentials. The password is used only during
-setup and is not stored. Home Assistant stores the refresh token returned by
-Kraken so it can keep the integration authenticated.
+Sign in with the same email and password used at the
+[Octopus Energy Spain account portal](https://octopusenergy.es/login). The
+password is used only for that login and is not stored. Home Assistant retrieves
+and stores the account's Developer API key and Kraken refresh token in the config
+entry. Normal token rotation is serialized so concurrent entity updates cannot
+invalidate each other, and the API key is used automatically if a refresh token
+expires.
+
+Existing installations automatically capture and retain the API key during the
+next successful update, as long as their current refresh token is still valid.
+If an installation is already asking for authentication, open the integration's
+**Reconfigure** action and sign in once with the Spanish account credentials.
+Do not use the UK login at `auth.octopus.energy`; Spanish customer accounts use
+the separate `octopusenergy.es` login.
 
 The first setup version automatically selects the first Octopus account and the
 first compatible Intelligent Go device returned by the API.

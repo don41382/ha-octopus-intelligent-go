@@ -21,6 +21,7 @@ from .api import (
     OctopusIntelligentGoClient,
 )
 from .const import (
+    CONF_API_KEY,
     CONF_DEVICE_ID,
     CONF_REFRESH_EXPIRES_IN,
     CONF_REFRESH_TOKEN,
@@ -82,10 +83,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         data[CONF_REFRESH_EXPIRES_IN] = auth.refresh_expires_in
         hass.config_entries.async_update_entry(entry, data=data)
 
+    def store_api_key(api_key: str) -> None:
+        data = dict(entry.data)
+        if data.get(CONF_API_KEY) == api_key:
+            return
+        data[CONF_API_KEY] = api_key
+        hass.config_entries.async_update_entry(entry, data=data)
+
     client = OctopusIntelligentGoClient(
         async_get_clientsession(hass),
+        api_key=entry.data.get(CONF_API_KEY),
         refresh_token=entry.data[CONF_REFRESH_TOKEN],
         on_auth_updated=store_auth,
+        on_api_key_updated=store_api_key,
     )
     coordinator = OctopusIntelligentGoCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()

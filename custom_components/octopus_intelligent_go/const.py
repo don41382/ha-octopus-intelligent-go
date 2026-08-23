@@ -13,9 +13,13 @@ PLATFORMS: list[Platform] = [
 ]
 
 GRAPHQL_URL = "https://api.oees-kraken.energy/v1/graphql/"
+ACCOUNT_PORTAL_ORIGIN = "https://octopusenergy.es"
+ACCOUNT_LOGIN_URL = f"{ACCOUNT_PORTAL_ORIGIN}/api/auth/login"
+ACCOUNT_GRAPHQL_URL = f"{ACCOUNT_PORTAL_ORIGIN}/api/graphql/kraken"
 DEFAULT_USER_AGENT = "OctoAppClient/Android/4.134.0 (Android 16; emu64a)"
 
 CONF_ACCOUNT_NUMBER = "account_number"
+CONF_API_KEY = "api_key"
 CONF_DEVICE_ID = "device_id"
 CONF_DEVICE_NAME = "device_name"
 CONF_DEVICE_TYPE = "device_type"
