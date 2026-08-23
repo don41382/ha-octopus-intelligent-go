@@ -16,7 +16,7 @@ immediate charging.
 
 ## Requirements
 
-- Home Assistant 2026.7 or newer
+- Home Assistant 2026.5 or newer
 - An Octopus Energy account with Intelligent Octopus Go configured
 - A compatible vehicle or charger already linked in the Octopus Energy app
 
