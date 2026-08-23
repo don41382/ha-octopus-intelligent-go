@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from http.cookies import SimpleCookie
 from typing import Any
 
 import pytest
@@ -162,21 +161,15 @@ def test_api_key_login_uses_api_key_input_and_stores_rotated_token() -> None:
     asyncio.run(run_test())
 
 
-def test_spanish_credentials_are_exchanged_for_api_key_then_token() -> None:
+def test_spanish_credentials_are_exchanged_directly_for_token() -> None:
     async def run_test() -> None:
         calls: list[dict[str, Any]] = []
         client = OctopusIntelligentGoClient(None)  # type: ignore[arg-type]
-
-        async def fake_get_api_key(email: str, password: str) -> str:
-            assert email == "customer@example.com"
-            assert password == "one-time-password"
-            return "spanish-account-api-key"
 
         async def fake_graphql(**kwargs: Any) -> dict[str, Any]:
             calls.append(kwargs)
             return _auth_response("access-token", "refresh-token", 123)
 
-        client._async_get_api_key_with_credentials = fake_get_api_key  # type: ignore[method-assign]
         client._graphql = fake_graphql  # type: ignore[method-assign]
 
         auth = await client.async_login_email_password(
@@ -185,42 +178,13 @@ def test_spanish_credentials_are_exchanged_for_api_key_then_token() -> None:
         )
 
         assert auth.refresh_token == "refresh-token"
-        assert client.api_key == "spanish-account-api-key"
         assert calls[0]["variables"] == {
-            "input": {"APIKey": "spanish-account-api-key"}
+            "input": {
+                "email": "customer@example.com",
+                "password": "one-time-password",
+            }
         }
-
-    asyncio.run(run_test())
-
-
-def test_spanish_portal_login_uses_session_cookies_to_read_api_key() -> None:
-    async def run_test() -> None:
-        login_cookies = SimpleCookie()
-        login_cookies["accessToken"] = "encrypted-access"
-        login_cookies["refreshToken"] = "encrypted-refresh"
-        session = _FakeSession(
-            [
-                _FakeResponse(b'{"authenticated":true}', cookies=login_cookies),
-                _FakeResponse(
-                    b'{"data":{"viewer":{"liveSecretKey":"sk_live_spain"}}}'
-                ),
-            ]
-        )
-        client = OctopusIntelligentGoClient(session)  # type: ignore[arg-type]
-
-        api_key = await client._async_get_api_key_with_credentials(
-            "customer@example.com",
-            "one-time-password",
-        )
-
-        assert api_key == "sk_live_spain"
-        assert session.calls[0]["json"] == {
-            "email": "customer@example.com",
-            "password": "one-time-password",
-        }
-        cookie_header = session.calls[1]["headers"]["cookie"]
-        assert "accessToken=encrypted-access" in cookie_header
-        assert "refreshToken=encrypted-refresh" in cookie_header
+        assert calls[0]["flapjack"] is True
 
     asyncio.run(run_test())
 
@@ -402,36 +366,3 @@ def _auth_response(
             }
         }
     }
-
-
-class _FakeResponse:
-    def __init__(
-        self,
-        body: bytes,
-        *,
-        status: int = 200,
-        cookies: SimpleCookie[str] | None = None,
-    ) -> None:
-        self._body = body
-        self.status = status
-        self.cookies = cookies or SimpleCookie()
-        self.headers = {"content-type": "application/json"}
-
-    async def __aenter__(self) -> _FakeResponse:
-        return self
-
-    async def __aexit__(self, *args: Any) -> None:
-        return None
-
-    async def read(self) -> bytes:
-        return self._body
-
-
-class _FakeSession:
-    def __init__(self, responses: list[_FakeResponse]) -> None:
-        self._responses = iter(responses)
-        self.calls: list[dict[str, Any]] = []
-
-    def post(self, url: str, **kwargs: Any) -> _FakeResponse:
-        self.calls.append({"url": url, **kwargs})
-        return next(self._responses)

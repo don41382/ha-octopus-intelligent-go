@@ -64,18 +64,18 @@ mutation Login($input: ObtainJSONWebTokenInput!) {
 Supported input shapes in the current `api.oees-kraken.energy` schema:
 
 ```json
+{"email": "user@example.com", "password": "..."}
 {"APIKey": "sk_live_..."}
 {"refreshToken": "..."}
 {"organizationSecretKey": "..."}
 {"preSignedKey": "..."}
 ```
 
-Older app captures also used `email` and `password`, but those fields are no
-longer exposed by the current GraphQL endpoint and must not be sent to it. The
-Octopus Energy Spain website accepts credentials through its own login endpoint.
-After that one-time login, the integration queries `viewer.liveSecretKey`
-through the site's authenticated GraphQL proxy, discards the password, and uses
-the returned Developer API key with `obtainKrakenToken`.
+The integration uses `email` and `password` only for initial setup or explicit
+reauthentication. It discards the password immediately after Kraken returns a
+refresh token. Some accounts may expose `viewer.liveSecretKey`; when present,
+the integration retains it as an additional recovery method, but Spain accounts
+must not be assumed to expose that field.
 
 The returned `token` is the access token used in the `authorization` header. The
 returned `refreshToken` can be exchanged with the same `Login` mutation to obtain
@@ -97,11 +97,9 @@ mutation generateLongLivedRefreshToken($input: ObtainLongLivedRefreshTokenInput!
 Observed long-lived refresh tokens return a very large `refreshExpiresIn` value,
 roughly decades. Kraken restricts this mutation to approved third-party
 organizations, so a personal integration cannot use it without an organization
-secret. This integration instead stores the account's revocable API key and
-uses it to recover automatically when a normal refresh token expires. Treat API
-keys and tokens as secrets and do not commit them. Existing config entries also
-request `viewer.liveSecretKey` during a normal authenticated update so they can
-migrate automatically while their current refresh token remains valid.
+secret. The integration serializes all refresh operations and persists every
+rotated refresh token so overlapping entity updates cannot invalidate each
+other. Treat API keys and tokens as secrets and do not commit them.
 
 ## Core Model
 
@@ -435,7 +433,7 @@ For each new data point:
 - Use one shared coordinator per account/device to avoid duplicate GraphQL calls.
 - Keep writes explicit: Home Assistant services/buttons should call mutations
   only when the user or automation requests them.
-- Do not store the account password. Store the revocable account API key and a
-  refresh token in Home Assistant's config entry data, and refresh access tokens
-  as needed.
+- Do not store the account password. Store the refresh token in Home Assistant's
+  config entry data and persist each rotated token. Retain a revocable API key
+  only when the account actually exposes one.
 - Keep access tokens and refresh tokens out of logs.

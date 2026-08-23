@@ -12,9 +12,6 @@ from typing import Any
 from aiohttp import ClientError, ClientSession, ClientTimeout
 
 from .const import (
-    ACCOUNT_GRAPHQL_URL,
-    ACCOUNT_LOGIN_URL,
-    ACCOUNT_PORTAL_ORIGIN,
     DAYS,
     DEFAULT_READY_TIME,
     DEFAULT_USER_AGENT,
@@ -96,15 +93,6 @@ query GetSmartFlexDevicePreferences($accountNumber: String!, $deviceId: String) 
       }
       isChargingDurationCapped
     }
-  }
-}
-""".strip()
-
-GET_API_KEY_QUERY = """
-query GetApiKey {
-  viewer {
-    __typename
-    liveSecretKey
   }
 }
 """.strip()
@@ -247,9 +235,16 @@ class OctopusIntelligentGoClient:
         return self._api_key
 
     async def async_login_email_password(self, email: str, password: str) -> AuthToken:
-        """Authenticate once through the Spanish account portal and retain its API key."""
-        api_key = await self._async_get_api_key_with_credentials(email, password)
-        return await self.async_login_api_key(api_key)
+        """Authenticate once with Spain Kraken credentials."""
+        data = await self._graphql(
+            operation_name="Login",
+            query=LOGIN_MUTATION,
+            variables={"input": {"email": email, "password": password}},
+            flapjack=True,
+        )
+        auth = _parse_auth(data)
+        self._apply_auth(auth)
+        return auth
 
     async def async_login_api_key(self, api_key: str | None = None) -> AuthToken:
         """Authenticate with a long-lived Octopus account API key."""
@@ -465,75 +460,6 @@ class OctopusIntelligentGoClient:
         if self._on_api_key_updated:
             self._on_api_key_updated(api_key)
 
-    async def _async_get_api_key_with_credentials(
-        self,
-        email: str,
-        password: str,
-    ) -> str:
-        """Use the Spanish web login once to retrieve the viewer's Developer API key."""
-        portal_headers = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "origin": ACCOUNT_PORTAL_ORIGIN,
-            "referer": f"{ACCOUNT_PORTAL_ORIGIN}/login",
-            "user-agent": self._user_agent,
-        }
-        try:
-            async with self._session.post(
-                ACCOUNT_LOGIN_URL,
-                json={"email": email, "password": password},
-                headers=portal_headers,
-                timeout=ClientTimeout(total=30),
-            ) as response:
-                raw = await response.read()
-                content_type = response.headers.get("content-type", "")
-                login_data = _decode_response(raw, content_type)
-                if response.status >= 400:
-                    _raise_portal_error(response.status, login_data)
-                cookie_header = "; ".join(
-                    f"{name}={cookie.value}"
-                    for name, cookie in response.cookies.items()
-                    if cookie.value
-                )
-
-            graphql_headers = dict(portal_headers)
-            if cookie_header:
-                graphql_headers["cookie"] = cookie_header
-            async with self._session.post(
-                ACCOUNT_GRAPHQL_URL,
-                json={
-                    "query": GET_API_KEY_QUERY,
-                    "operationName": "GetApiKey",
-                    "variables": {},
-                },
-                headers=graphql_headers,
-                timeout=ClientTimeout(total=30),
-            ) as response:
-                raw = await response.read()
-                content_type = response.headers.get("content-type", "")
-                data = _decode_response(raw, content_type)
-                if response.status >= 400:
-                    _raise_portal_error(response.status, data)
-        except (ClientError, asyncio.TimeoutError) as exc:
-            raise OctopusIntelligentGoApiError(f"request failed: {exc}") from exc
-
-        if isinstance(data, dict) and data.get("errors"):
-            errors = data["errors"]
-            if _errors_are_auth_related(errors):
-                raise OctopusIntelligentGoAuthError(_format_graphql_errors(errors))
-            raise OctopusIntelligentGoApiError(_format_graphql_errors(errors))
-        if not isinstance(data, dict):
-            raise OctopusIntelligentGoApiError(f"unexpected response: {data!r}")
-
-        viewer = data.get("data", {}).get("viewer")
-        api_key = viewer.get("liveSecretKey") if isinstance(viewer, dict) else None
-        if not isinstance(api_key, str) or not api_key:
-            raise OctopusIntelligentGoApiError(
-                "Octopus Energy Spain login did not expose a Developer API key"
-            )
-        self._set_api_key(api_key)
-        return api_key
-
     async def _graphql(
         self,
         *,
@@ -604,16 +530,6 @@ def _parse_auth(data: dict[str, Any]) -> AuthToken:
         refresh_token=token_data.get("refreshToken"),
         refresh_expires_in=refresh_expires_in,
     )
-
-
-def _raise_portal_error(status: int, data: Any) -> None:
-    error = data.get("error") if isinstance(data, dict) else None
-    error_code = error.get("errorCode") if isinstance(error, dict) else None
-    message = error.get("message") if isinstance(error, dict) else None
-    detail = str(message or data)
-    if error_code in {"KT-CT-1138", "KT-CT-1139"} or status == 401:
-        raise OctopusIntelligentGoAuthError(detail)
-    raise OctopusIntelligentGoApiError(f"Octopus Energy Spain login failed: {detail}")
 
 
 def _decode_response(raw: bytes, content_type: str) -> Any:

@@ -101,7 +101,7 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         user_input: dict[str, Any] | None = None,
     ) -> config_entries.ConfigFlowResult:
-        """Refresh the retained API key using a one-time Spanish account login."""
+        """Obtain a fresh refresh token using a one-time account login."""
         entry = self.hass.config_entries.async_get_entry(
             str(self.context.get("entry_id") or "")
         )
@@ -181,7 +181,7 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _async_login_and_discover(
         self,
         user_input: dict[str, Any],
-    ) -> tuple[AuthToken, str, str, dict[str, Any]]:
+    ) -> tuple[AuthToken, str | None, str, dict[str, Any]]:
         client = OctopusIntelligentGoClient(async_get_clientsession(self.hass))
         auth = await client.async_login_email_password(
             user_input[CONF_EMAIL],
@@ -190,10 +190,6 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not auth.refresh_token:
             raise OctopusIntelligentGoAuthError("login response did not include a refresh token")
         api_key = client.api_key
-        if not api_key:
-            raise OctopusIntelligentGoApiError(
-                "Octopus Energy Spain login did not expose a Developer API key"
-            )
 
         accounts = await client.async_get_account_numbers()
         if not accounts:
@@ -213,7 +209,7 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         user_input: dict[str, Any],
         entry_data: dict[str, Any],
-    ) -> tuple[AuthToken, str]:
+    ) -> tuple[AuthToken, str | None]:
         client = OctopusIntelligentGoClient(async_get_clientsession(self.hass))
         auth = await client.async_login_email_password(
             user_input[CONF_EMAIL],
@@ -224,10 +220,6 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "login response did not include a refresh token"
             )
         api_key = client.api_key
-        if not api_key:
-            raise OctopusIntelligentGoApiError(
-                "Octopus Energy Spain login did not expose a Developer API key"
-            )
 
         devices = await client.async_get_intelligent_go_devices(
             entry_data[CONF_ACCOUNT_NUMBER],
@@ -262,14 +254,13 @@ def _entry_title(device: dict[str, Any]) -> str:
 
 def _entry_data(
     auth: AuthToken,
-    api_key: str,
+    api_key: str | None,
     account_number: str,
     device: dict[str, Any],
 ) -> dict[str, Any]:
     if not auth.refresh_token:
         raise OctopusIntelligentGoAuthError("login response did not include a refresh token")
-    return {
-        CONF_API_KEY: api_key,
+    data = {
         CONF_REFRESH_TOKEN: auth.refresh_token,
         CONF_REFRESH_EXPIRES_IN: auth.refresh_expires_in,
         CONF_ACCOUNT_NUMBER: account_number,
@@ -278,17 +269,21 @@ def _entry_data(
         CONF_DEVICE_TYPE: device.get("deviceType"),
         CONF_PROVIDER: device.get("provider"),
     }
+    if api_key:
+        data[CONF_API_KEY] = api_key
+    return data
 
 
 def _updated_auth_data(
     entry_data: dict[str, Any],
-    api_key: str,
+    api_key: str | None,
     auth: AuthToken,
 ) -> dict[str, Any]:
     if not auth.refresh_token:
         raise OctopusIntelligentGoAuthError("login response did not include a refresh token")
     data = dict(entry_data)
-    data[CONF_API_KEY] = api_key
+    if api_key:
+        data[CONF_API_KEY] = api_key
     data[CONF_REFRESH_TOKEN] = auth.refresh_token
     data[CONF_REFRESH_EXPIRES_IN] = auth.refresh_expires_in
     return data
