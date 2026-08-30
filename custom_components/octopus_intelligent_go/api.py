@@ -86,6 +86,10 @@ query GetSmartFlexDevicePreferences($accountNumber: String!, $deviceId: String) 
   devices(accountNumber: $accountNumber, deviceId: $deviceId) {
     __typename
     id
+    status {
+      __typename
+      isSuspended
+    }
     preferences {
       __typename
       targetType
@@ -182,9 +186,23 @@ mutation FlexUpdateBoostCharge($input: UpdateBoostChargeInput!) {
 }
 """.strip()
 
+UPDATE_DEVICE_SMART_CONTROL_MUTATION = """
+mutation UpdateDeviceSmartControl($input: SmartControlInput!) {
+  updateDeviceSmartControl(input: $input) {
+    __typename
+    id
+    status {
+      __typename
+      isSuspended
+    }
+  }
+}
+""".strip()
+
 BOOST_CHARGE_REFUSAL_REASONS = {
     "BC_DEVICE_DISCONNECTED": "the vehicle is not plugged in",
     "BC_DEVICE_NOT_AT_HOME": "the vehicle is not at home",
+    "BC_DEVICE_SUSPENDED": "smart charging is suspended",
 }
 
 
@@ -400,6 +418,19 @@ class OctopusIntelligentGoClient:
         return await self._authenticated_graphql(
             operation_name="FlexUpdateBoostCharge",
             query=BOOST_CHARGE_MUTATION,
+            variables={"input": {"deviceId": device_id, "action": action}},
+        )
+
+    async def async_update_device_smart_control(
+        self,
+        *,
+        device_id: str,
+        action: str,
+    ) -> dict[str, Any]:
+        """Suspend or resume SmartFlex control for a device."""
+        return await self._authenticated_graphql(
+            operation_name="UpdateDeviceSmartControl",
+            query=UPDATE_DEVICE_SMART_CONTROL_MUTATION,
             variables={"input": {"deviceId": device_id, "action": action}},
         )
 

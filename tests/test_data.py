@@ -7,10 +7,7 @@ import pytest
 from custom_components.octopus_intelligent_go.data import (
     IntelligentGoData,
     as_float,
-    immediate_charge_action,
     immediate_charge_active_from_state,
-    immediate_charge_icon,
-    immediate_charge_name,
     normalize_state,
 )
 
@@ -35,28 +32,10 @@ def test_immediate_charge_active_from_state(state: str | None, expected: bool | 
     assert immediate_charge_active_from_state(state) is expected
 
 
-@pytest.mark.parametrize(
-    ("active", "action", "icon", "name"),
-    [
-        (True, "CANCEL", "mdi:stop-circle-outline", "Stop Immediate"),
-        (False, "BOOST", "mdi:play-circle-outline", "Start Immediate"),
-        (None, "BOOST", "mdi:play-circle-outline", "Start Immediate"),
-    ],
-)
-def test_immediate_charge_button_decision(
-    active: bool | None,
-    action: str,
-    icon: str,
-    name: str,
-) -> None:
-    assert immediate_charge_action(active) == action
-    assert immediate_charge_icon(active) == icon
-    assert immediate_charge_name(active) == name
-
-
 def test_intelligent_go_data_normalizes_device_payloads() -> None:
     data = IntelligentGoData(
         preferences_device={
+            "status": {"isSuspended": False},
             "preferences": {
                 "schedules": [
                     "not-a-schedule",
@@ -81,6 +60,7 @@ def test_intelligent_go_data_normalizes_device_payloads() -> None:
     assert data.target_charge_percentage == 69.5
     assert data.current_state == "BOOST_ACTIVE"
     assert data.immediate_charge_active is True
+    assert data.smart_control_enabled is True
     assert data.state_of_charge == 56.7
     assert data.vehicle_charge_limit == 80.0
 
@@ -108,8 +88,32 @@ def test_intelligent_go_data_tolerates_malformed_payloads() -> None:
     assert data.target_charge_percentage is None
     assert data.current_state is None
     assert data.immediate_charge_active is None
+    assert data.smart_control_enabled is None
     assert data.state_of_charge is None
     assert data.vehicle_charge_limit is None
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        ({"isSuspended": False}, True),
+        ({"isSuspended": True}, False),
+        ({"isSuspended": "false"}, None),
+        ({}, None),
+        ("not-a-dict", None),
+    ],
+)
+def test_smart_control_enabled_from_suspension_state(
+    status: object,
+    expected: bool | None,
+) -> None:
+    data = IntelligentGoData(
+        preferences_device={"status": status},
+        state_device={},
+        charge_capability_device={},
+    )
+
+    assert data.smart_control_enabled is expected
 
 
 @pytest.mark.parametrize(

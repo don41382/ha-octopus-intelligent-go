@@ -9,7 +9,8 @@ immediate charging.
 ## Features
 
 - Set the target charge percentage
-- Start or stop immediate charging with one action button
+- Start or cancel immediate boost charging with a switch
+- Allow or suspend Octopus smart charging with a switch
 - Read the current charging/device state
 - Read the current vehicle state of charge
 - Read the current vehicle charge limit
@@ -82,14 +83,17 @@ first compatible Intelligent Go device returned by the API.
 | Entity | Type | Description |
 | --- | --- | --- |
 | Target charge percentage | Number | Sets the desired maximum charge percentage |
-| Start/Stop Immediate | Button | Shows Start Immediate or Stop Immediate depending on current state |
+| Immediate charging | Switch | Starts an immediate boost when on and cancels it when off |
+| Smart charging | Switch | Allows Octopus planning when on and suspends SmartFlex control when off |
 | State | Sensor | Current charging state |
 | State of charge | Sensor | Current vehicle battery percentage |
 | Vehicle charge limit | Sensor | Current vehicle-side charge limit |
 
 ## Automation Services
 
-For automations, use the deterministic services instead of the smart button:
+The switches work with Home Assistant's standard `switch.turn_on` and
+`switch.turn_off` actions. The existing deterministic immediate-charge services
+remain available for backwards-compatible automations:
 
 ```yaml
 action: octopus_intelligent_go.start_immediate_charge
@@ -105,6 +109,20 @@ data:
 
 The `device_id` is the Home Assistant device registry ID selected by the
 automation UI. Raw Kraken/SmartFlex device IDs are also accepted in YAML.
+
+The two switches are deliberately independent:
+
+- To charge immediately, keep **Smart charging** on and turn **Immediate
+  charging** on.
+- To stop an active boost, turn **Immediate charging** off.
+- To stop Octopus from planning or executing smart charges, turn **Smart
+  charging** off.
+- To pause all Kraken-controlled charging, turn **Immediate charging** off and
+  then turn **Smart charging** off.
+
+Suspending Smart charging controls Kraken SmartFlex only. It cannot prevent a
+vehicle or charger from starting a session independently through its own
+settings or fallback behavior.
 
 ## Troubleshooting
 

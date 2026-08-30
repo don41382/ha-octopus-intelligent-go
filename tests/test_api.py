@@ -80,6 +80,24 @@ def test_format_graphql_errors_humanizes_unknown_refusal_reason() -> None:
     assert _format_graphql_errors(errors) == "Unable to trigger boost charge: device sleeping. (KT-CT-9999)"
 
 
+def test_format_graphql_errors_explains_suspended_smart_charging() -> None:
+    errors = [
+        {
+            "message": "Unable to trigger boost charge.",
+            "extensions": {
+                "errorCode": "KT-CT-4357",
+                "boostChargeRefusalReasons": ["BC_DEVICE_SUSPENDED"],
+            },
+        }
+    ]
+
+    assert (
+        _format_graphql_errors(errors)
+        == "Immediate charging cannot be started because smart charging is suspended. "
+        "(KT-CT-4357)"
+    )
+
+
 @pytest.mark.parametrize(
     "errors",
     [
@@ -416,6 +434,35 @@ def test_expired_refresh_token_without_api_key_still_requires_reauth() -> None:
 
         with pytest.raises(OctopusIntelligentGoAuthError, match="expired"):
             await client._ensure_access_token()
+
+    asyncio.run(run_test())
+
+
+@pytest.mark.parametrize("action", ["SUSPEND", "UNSUSPEND"])
+def test_update_device_smart_control_uses_expected_mutation(action: str) -> None:
+    async def run_test() -> None:
+        calls: list[dict[str, Any]] = []
+        client = OctopusIntelligentGoClient(
+            None,  # type: ignore[arg-type]
+            access_token="access-token",
+        )
+
+        async def fake_graphql(**kwargs: Any) -> dict[str, Any]:
+            calls.append(kwargs)
+            return {"data": {"updateDeviceSmartControl": {"id": "device-123"}}}
+
+        client._authenticated_graphql = fake_graphql  # type: ignore[method-assign]
+
+        await client.async_update_device_smart_control(
+            device_id="device-123",
+            action=action,
+        )
+
+        assert calls[0]["operation_name"] == "UpdateDeviceSmartControl"
+        assert calls[0]["variables"] == {
+            "input": {"deviceId": "device-123", "action": action}
+        }
+        assert "updateDeviceSmartControl" in calls[0]["query"]
 
     asyncio.run(run_test())
 

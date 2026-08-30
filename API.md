@@ -168,7 +168,8 @@ For the first implementation, expose only these entities:
 | Entity | Home Assistant type | API operation | Field/action |
 | --- | --- | --- | --- |
 | Target/max charge percentage | `number` | `GetSmartFlexDevicePreferences`, `SetSmartFlexDevicePreferences` | Read/write schedule `max` percentage |
-| Start/Stop Immediate | `button` | `GetSmartFlexDeviceState`, `FlexUpdateBoostCharge` | Write `action: BOOST` or `action: CANCEL` depending on current state |
+| Immediate charging | `switch` | `GetSmartFlexDeviceState`, `FlexUpdateBoostCharge` | On writes `BOOST`; off writes `CANCEL` |
+| Smart charging | `switch` | `GetSmartFlexDevicePreferences`, `UpdateDeviceSmartControl` | On writes `UNSUSPEND`; off writes `SUSPEND` |
 | Start Immediate Charge | service | `FlexUpdateBoostCharge` | Always write `action: BOOST` |
 | Cancel Immediate Charge | service | `FlexUpdateBoostCharge` | Always write `action: CANCEL` |
 | Current charging/device state | `sensor` | `GetSmartFlexDeviceState` or `GetSmartFlexDevicesStates` | `status.currentState` |
@@ -275,8 +276,8 @@ Cancel immediate charging:
 
 ### Suspend or Resume Smart Charging
 
-The Spain schema and a live Spain account expose this operation, although the
-integration does not yet create a Home Assistant entity for it:
+The Spain schema and a live Spain account expose this operation. The integration
+uses it for the Smart charging switch:
 
 ```graphql
 mutation UpdateDeviceSmartControl($input: SmartControlInput!) {
@@ -386,7 +387,6 @@ These were found in the Android app but should stay out of the first release:
 | Planned charging | `FlexPlannedDispatches` | next dispatch start/end, type, expected kWh |
 | Charge history | `GetSmartFlexChargeHistory` | session start/end, energy, cost, final SoC, charge problems |
 | Alerts | `GetSmartFlexDeviceAlerts` | alert messages and publish timestamps |
-| Smart control | `UpdateDeviceSmartControl` | confirmed Spain support for `SUSPEND`/`UNSUSPEND` |
 | Charge duration cap | `UpdateDeviceIsChargingDurationCapped` | enable/disable duration cap |
 | Grid export | `UpdateDeviceGridExport` | export preference |
 | Re-auth status | `GetDeviceReAuthenticationState` | re-auth eligibility/required flow hints |
@@ -471,7 +471,7 @@ For each new data point:
 - Poll read-only sensors conservatively. Start with a 60-120 second interval for
   device state and SoC unless the API proves it can handle faster polling.
 - Use one shared coordinator per account/device to avoid duplicate GraphQL calls.
-- Keep writes explicit: Home Assistant services/buttons should call mutations
+- Keep writes explicit: Home Assistant services/switches should call mutations
   only when the user or automation requests them.
 - Do not store the account password. Store the refresh token and revocable API
   key in Home Assistant's config entry data. Read the existing viewer key before

@@ -39,14 +39,6 @@ IMMEDIATE_CHARGE_INACTIVE_STATES = {
 }
 
 IMMEDIATE_CHARGE_NEGATIVE_MARKERS = ("CANCEL", "STOP", "ENDED", "FAILED")
-IMMEDIATE_CHARGE_START_ACTION = "BOOST"
-IMMEDIATE_CHARGE_STOP_ACTION = "CANCEL"
-IMMEDIATE_CHARGE_START_ICON = "mdi:play-circle-outline"
-IMMEDIATE_CHARGE_STOP_ICON = "mdi:stop-circle-outline"
-IMMEDIATE_CHARGE_START_NAME = "Start Immediate"
-IMMEDIATE_CHARGE_STOP_NAME = "Stop Immediate"
-
-
 @dataclass
 class IntelligentGoData:
     """Normalized Intelligent Go data shared by all entities."""
@@ -87,6 +79,17 @@ class IntelligentGoData:
         return immediate_charge_active_from_state(self.current_state)
 
     @property
+    def smart_control_enabled(self) -> bool | None:
+        """Return whether Octopus smart scheduling is enabled."""
+        status = self.preferences_device.get("status") or {}
+        if not isinstance(status, dict):
+            return None
+        is_suspended = status.get("isSuspended")
+        if not isinstance(is_suspended, bool):
+            return None
+        return not is_suspended
+
+    @property
     def state_of_charge(self) -> float | None:
         status = self.charge_capability_device.get("status") or {}
         if not isinstance(status, dict):
@@ -119,27 +122,6 @@ def immediate_charge_active_from_state(value: str | None) -> bool | None:
     if any(marker in state for marker in ("BOOST", "BUMP", "IMMEDIATE")):
         return not any(marker in state for marker in IMMEDIATE_CHARGE_NEGATIVE_MARKERS)
     return False
-
-
-def immediate_charge_action(active: bool | None) -> str:
-    """Return the next immediate-charge mutation action."""
-    if active is True:
-        return IMMEDIATE_CHARGE_STOP_ACTION
-    return IMMEDIATE_CHARGE_START_ACTION
-
-
-def immediate_charge_icon(active: bool | None) -> str:
-    """Return the icon for the next immediate-charge action."""
-    if active is True:
-        return IMMEDIATE_CHARGE_STOP_ICON
-    return IMMEDIATE_CHARGE_START_ICON
-
-
-def immediate_charge_name(active: bool | None) -> str:
-    """Return the button name for the next immediate-charge action."""
-    if active is True:
-        return IMMEDIATE_CHARGE_STOP_NAME
-    return IMMEDIATE_CHARGE_START_NAME
 
 
 def as_float(value: Any) -> float | None:

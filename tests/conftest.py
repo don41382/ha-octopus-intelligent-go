@@ -26,6 +26,7 @@ class Platform(StrEnum):
     BUTTON = "button"
     NUMBER = "number"
     SENSOR = "sensor"
+    SWITCH = "switch"
 
 
 class ConfigFlow:
