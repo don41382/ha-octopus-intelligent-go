@@ -39,5 +39,19 @@
       "reauth_successful": "Reauthentication was successful.",
       "unknown": "The Home Assistant config entry was not found."
     }
+  },
+  "entity": {
+    "sensor": {
+      "immediate_charge_status": {
+        "name": "Charging now",
+        "state": {
+          "stopped": "Stopped",
+          "starting": "Starting",
+          "running": "Running",
+          "stopping": "Stopping",
+          "failed": "Failed"
+        }
+      }
+    }
   }
 }

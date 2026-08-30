@@ -83,17 +83,20 @@ first compatible Intelligent Go device returned by the API.
 | Entity | Type | Description |
 | --- | --- | --- |
 | Target charge percentage | Number | Sets the desired maximum charge percentage |
-| Immediate charging | Switch | Starts an immediate boost when on and cancels it when off |
-| Smart charging | Switch | Allows Octopus planning when on and suspends SmartFlex control when off |
+| Start charging now | Button | Starts immediate charging |
+| Stop charging | Button | Stops immediate charging |
+| Charging now | Sensor | Reports `stopped`, `starting`, `running`, `stopping`, or `failed` |
+| Allow scheduled charging | Switch | Allows Octopus planning when on and suspends SmartFlex control when off |
 | State | Sensor | Current charging state |
 | State of charge | Sensor | Current vehicle battery percentage |
 | Vehicle charge limit | Sensor | Current vehicle-side charge limit |
 
 ## Automation Services
 
-The switches work with Home Assistant's standard `switch.turn_on` and
-`switch.turn_off` actions. The existing deterministic immediate-charge services
-remain available for backwards-compatible automations:
+The **Allow scheduled charging** switch works with Home Assistant's standard
+`switch.turn_on` and `switch.turn_off` actions. The immediate-charging buttons
+use Home Assistant's standard `button.press` action. The existing deterministic
+services remain available for backwards-compatible automations:
 
 ```yaml
 action: octopus_intelligent_go.start_immediate_charge
@@ -110,18 +113,18 @@ data:
 The `device_id` is the Home Assistant device registry ID selected by the
 automation UI. Raw Kraken/SmartFlex device IDs are also accepted in YAML.
 
-The two switches are deliberately independent:
+Immediate and scheduled charging are deliberately independent:
 
-- To charge immediately, keep **Smart charging** on and turn **Immediate
-  charging** on.
-- To stop an active boost, turn **Immediate charging** off.
-- To stop Octopus from planning or executing smart charges, turn **Smart
-  charging** off.
-- To pause all Kraken-controlled charging, turn **Immediate charging** off and
-  then turn **Smart charging** off.
+- To charge immediately, keep **Allow scheduled charging** on and press **Start
+  charging now**.
+- To stop an active boost, press **Stop charging**.
+- To stop Octopus from planning or executing smart charges, turn **Allow
+  scheduled charging** off.
+- To pause all Kraken-controlled charging, press **Stop charging** and then turn
+  **Allow scheduled charging** off.
 
-Suspending Smart charging controls Kraken SmartFlex only. It cannot prevent a
-vehicle or charger from starting a session independently through its own
+Disabling scheduled charging controls Kraken SmartFlex only. It cannot prevent
+a vehicle or charger from starting a session independently through its own
 settings or fallback behavior.
 
 ## Troubleshooting

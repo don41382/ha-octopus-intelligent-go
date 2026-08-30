@@ -8,6 +8,7 @@ from custom_components.octopus_intelligent_go.data import (
     IntelligentGoData,
     as_float,
     immediate_charge_active_from_state,
+    immediate_charge_status_from_state,
     normalize_state,
 )
 
@@ -28,8 +29,35 @@ from custom_components.octopus_intelligent_go.data import (
         (None, None),
     ],
 )
-def test_immediate_charge_active_from_state(state: str | None, expected: bool | None) -> None:
+def test_immediate_charge_active_from_state(
+    state: str | None, expected: bool | None
+) -> None:
     assert immediate_charge_active_from_state(state) is expected
+
+
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    [
+        ("BOOST_REQUESTED", "starting"),
+        ("immediate_charge_starting", "starting"),
+        ("BOOST", "running"),
+        ("boost_charging", "running"),
+        ("BUMP_CHARGE_ACTIVE", "running"),
+        ("BOOST_CANCELLING", "stopping"),
+        ("immediate_charge_stopping", "stopping"),
+        ("BOOST_CANCELLED", "stopped"),
+        ("immediate_charge_failed", "failed"),
+        ("SMART_CONTROL_IN_PROGRESS", "stopped"),
+        ("something_else", "stopped"),
+        (" ", None),
+        (None, None),
+    ],
+)
+def test_immediate_charge_status_from_state(
+    state: str | None,
+    expected: str | None,
+) -> None:
+    assert immediate_charge_status_from_state(state) == expected
 
 
 def test_intelligent_go_data_normalizes_device_payloads() -> None:
@@ -42,7 +70,7 @@ def test_intelligent_go_data_normalizes_device_payloads() -> None:
                     {"dayOfWeek": "MONDAY", "time": "07:30", "max": True},
                     {"dayOfWeek": "TUESDAY", "time": "07:30", "max": "69.5"},
                 ]
-            }
+            },
         },
         state_device={"status": {"currentState": "BOOST_ACTIVE"}},
         charge_capability_device={
@@ -60,6 +88,7 @@ def test_intelligent_go_data_normalizes_device_payloads() -> None:
     assert data.target_charge_percentage == 69.5
     assert data.current_state == "BOOST_ACTIVE"
     assert data.immediate_charge_active is True
+    assert data.immediate_charge_status == "running"
     assert data.smart_control_enabled is True
     assert data.state_of_charge == 56.7
     assert data.vehicle_charge_limit == 80.0
@@ -74,13 +103,16 @@ def test_intelligent_go_data_uses_current_fallback_for_state() -> None:
 
     assert data.current_state == "SMART_CONTROL_NOT_AVAILABLE"
     assert data.immediate_charge_active is False
+    assert data.immediate_charge_status == "stopped"
 
 
 def test_intelligent_go_data_tolerates_malformed_payloads() -> None:
     data = IntelligentGoData(
         preferences_device={"preferences": "not-a-dict"},
         state_device={"status": "not-a-dict"},
-        charge_capability_device={"status": {"stateOfCharge": "bad", "stateOfChargeLimit": "bad"}},
+        charge_capability_device={
+            "status": {"stateOfCharge": "bad", "stateOfChargeLimit": "bad"}
+        },
     )
 
     assert data.preferences == {}
@@ -88,6 +120,7 @@ def test_intelligent_go_data_tolerates_malformed_payloads() -> None:
     assert data.target_charge_percentage is None
     assert data.current_state is None
     assert data.immediate_charge_active is None
+    assert data.immediate_charge_status is None
     assert data.smart_control_enabled is None
     assert data.state_of_charge is None
     assert data.vehicle_charge_limit is None

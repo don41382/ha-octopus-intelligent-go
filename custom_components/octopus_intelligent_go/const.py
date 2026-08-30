@@ -7,6 +7,7 @@ from homeassistant.const import Platform
 DOMAIN = "octopus_intelligent_go"
 
 PLATFORMS: list[Platform] = [
+    Platform.BUTTON,
     Platform.NUMBER,
     Platform.SENSOR,
     Platform.SWITCH,

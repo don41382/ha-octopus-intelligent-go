@@ -30,6 +30,14 @@ class OctopusIntelligentGoSensorDescription(SensorEntityDescription):
 
 SENSOR_DESCRIPTIONS = (
     OctopusIntelligentGoSensorDescription(
+        key="immediate_charge_status",
+        translation_key="immediate_charge_status",
+        icon="mdi:ev-station",
+        device_class=SensorDeviceClass.ENUM,
+        options=("stopped", "starting", "running", "stopping", "failed"),
+        value_fn=lambda data: data.immediate_charge_status,
+    ),
+    OctopusIntelligentGoSensorDescription(
         key="state",
         name="State",
         value_fn=lambda data: data.current_state,

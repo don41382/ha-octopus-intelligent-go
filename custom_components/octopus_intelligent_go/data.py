@@ -39,6 +39,23 @@ IMMEDIATE_CHARGE_INACTIVE_STATES = {
 }
 
 IMMEDIATE_CHARGE_NEGATIVE_MARKERS = ("CANCEL", "STOP", "ENDED", "FAILED")
+
+IMMEDIATE_CHARGE_STARTING_MARKERS = (
+    "INITIATING",
+    "PENDING",
+    "REQUESTED",
+    "STARTING",
+)
+
+IMMEDIATE_CHARGE_STOPPING_MARKERS = (
+    "CANCELING",
+    "CANCELLING",
+    "STOPPING",
+)
+
+IMMEDIATE_CHARGE_FAILED_MARKERS = ("ERROR", "FAILED", "REFUSED")
+
+
 @dataclass
 class IntelligentGoData:
     """Normalized Intelligent Go data shared by all entities."""
@@ -77,6 +94,11 @@ class IntelligentGoData:
     def immediate_charge_active(self) -> bool | None:
         """Return whether immediate charging appears active from device state."""
         return immediate_charge_active_from_state(self.current_state)
+
+    @property
+    def immediate_charge_status(self) -> str | None:
+        """Return a user-facing immediate-charging lifecycle state."""
+        return immediate_charge_status_from_state(self.current_state)
 
     @property
     def smart_control_enabled(self) -> bool | None:
@@ -122,6 +144,30 @@ def immediate_charge_active_from_state(value: str | None) -> bool | None:
     if any(marker in state for marker in ("BOOST", "BUMP", "IMMEDIATE")):
         return not any(marker in state for marker in IMMEDIATE_CHARGE_NEGATIVE_MARKERS)
     return False
+
+
+def immediate_charge_status_from_state(value: str | None) -> str | None:
+    """Return a normalized immediate-charging lifecycle state."""
+    state = normalize_state(value)
+    if state is None:
+        return None
+
+    is_immediate_charge_state = any(
+        marker in state for marker in ("BOOST", "BUMP", "IMMEDIATE")
+    )
+    if not is_immediate_charge_state:
+        return "stopped"
+    if any(marker in state for marker in IMMEDIATE_CHARGE_FAILED_MARKERS):
+        return "failed"
+    if any(marker in state for marker in IMMEDIATE_CHARGE_STOPPING_MARKERS):
+        return "stopping"
+    if any(marker in state for marker in IMMEDIATE_CHARGE_STARTING_MARKERS):
+        return "starting"
+    if any(marker in state for marker in ("CANCELED", "CANCELLED", "ENDED", "STOPPED")):
+        return "stopped"
+    if immediate_charge_active_from_state(state):
+        return "running"
+    return "stopped"
 
 
 def as_float(value: Any) -> float | None:

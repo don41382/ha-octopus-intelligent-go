@@ -1,6 +1,6 @@
 start_immediate_charge:
-  name: Start Immediate Charge
-  description: Always ask Octopus to start immediate charging for one configured Intelligent Go device.
+  name: Start charging now
+  description: Ask Octopus to start charging one configured Intelligent Go device immediately.
   fields:
     device_id:
       required: true
@@ -11,8 +11,8 @@ start_immediate_charge:
           integration: octopus_intelligent_go
 
 cancel_immediate_charge:
-  name: Cancel Immediate Charge
-  description: Always ask Octopus to cancel immediate charging for one configured Intelligent Go device.
+  name: Stop charging
+  description: Ask Octopus to stop immediate charging for one configured Intelligent Go device.
   fields:
     device_id:
       required: true
