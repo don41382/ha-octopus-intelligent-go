@@ -28,8 +28,55 @@ class Platform(StrEnum):
     SENSOR = "sensor"
 
 
+class ConfigFlow:
+    """Minimal Home Assistant config flow base class."""
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        super().__init_subclass__()
+
+
+class TextSelectorType(StrEnum):
+    """Minimal text selector type enum."""
+
+    PASSWORD = "password"
+
+
+class TextSelectorConfig:
+    """Minimal text selector config."""
+
+    def __init__(self, **kwargs: object) -> None:
+        self.kwargs = kwargs
+
+
+class TextSelector:
+    """Minimal text selector."""
+
+    def __init__(self, config: TextSelectorConfig) -> None:
+        self.config = config
+
+
 homeassistant = types.ModuleType("homeassistant")
+homeassistant.__path__ = []
+homeassistant_config_entries = types.ModuleType("homeassistant.config_entries")
+homeassistant_config_entries.ConfigFlow = ConfigFlow
+homeassistant_config_entries.ConfigFlowResult = dict
 homeassistant_const = types.ModuleType("homeassistant.const")
+homeassistant_const.CONF_EMAIL = "email"
+homeassistant_const.CONF_PASSWORD = "password"
 homeassistant_const.Platform = Platform
+homeassistant_helpers = types.ModuleType("homeassistant.helpers")
+homeassistant_helpers.__path__ = []
+homeassistant_aiohttp_client = types.ModuleType(
+    "homeassistant.helpers.aiohttp_client"
+)
+homeassistant_aiohttp_client.async_get_clientsession = lambda hass: None
+homeassistant_selector = types.ModuleType("homeassistant.helpers.selector")
+homeassistant_selector.TextSelector = TextSelector
+homeassistant_selector.TextSelectorConfig = TextSelectorConfig
+homeassistant_selector.TextSelectorType = TextSelectorType
 sys.modules.setdefault("homeassistant", homeassistant)
+sys.modules["homeassistant.config_entries"] = homeassistant_config_entries
 sys.modules["homeassistant.const"] = homeassistant_const
+sys.modules["homeassistant.helpers"] = homeassistant_helpers
+sys.modules["homeassistant.helpers.aiohttp_client"] = homeassistant_aiohttp_client
+sys.modules["homeassistant.helpers.selector"] = homeassistant_selector

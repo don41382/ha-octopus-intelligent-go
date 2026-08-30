@@ -117,6 +117,8 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             except OctopusIntelligentGoAuthError:
                 errors["base"] = "invalid_auth"
+            except NoAccountsError:
+                errors["base"] = "no_accounts"
             except NoDevicesError:
                 errors["base"] = "no_devices"
             except OctopusIntelligentGoApiError as err:
@@ -158,6 +160,8 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             except OctopusIntelligentGoAuthError:
                 errors["base"] = "invalid_auth"
+            except NoAccountsError:
+                errors["base"] = "no_accounts"
             except NoDevicesError:
                 errors["base"] = "no_devices"
             except OctopusIntelligentGoApiError as err:
@@ -181,7 +185,7 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _async_login_and_discover(
         self,
         user_input: dict[str, Any],
-    ) -> tuple[AuthToken, str | None, str, dict[str, Any]]:
+    ) -> tuple[AuthToken, str, str, dict[str, Any]]:
         client = OctopusIntelligentGoClient(async_get_clientsession(self.hass))
         auth = await client.async_login_email_password(
             user_input[CONF_EMAIL],
@@ -189,8 +193,6 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         if not auth.refresh_token:
             raise OctopusIntelligentGoAuthError("login response did not include a refresh token")
-        api_key = client.api_key
-
         accounts = await client.async_get_account_numbers()
         if not accounts:
             raise NoAccountsError
@@ -203,13 +205,14 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         device = devices[0]
         if not isinstance(device.get("id"), str):
             raise OctopusIntelligentGoApiError("first compatible device did not include an id")
+        api_key = await client.async_get_or_create_api_key()
         return auth, api_key, account_number, device
 
     async def _async_validate_credentials_for_entry(
         self,
         user_input: dict[str, Any],
         entry_data: dict[str, Any],
-    ) -> tuple[AuthToken, str | None]:
+    ) -> tuple[AuthToken, str]:
         client = OctopusIntelligentGoClient(async_get_clientsession(self.hass))
         auth = await client.async_login_email_password(
             user_input[CONF_EMAIL],
@@ -219,7 +222,9 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             raise OctopusIntelligentGoAuthError(
                 "login response did not include a refresh token"
             )
-        api_key = client.api_key
+        accounts = await client.async_get_account_numbers()
+        if entry_data[CONF_ACCOUNT_NUMBER] not in accounts:
+            raise NoAccountsError
 
         devices = await client.async_get_intelligent_go_devices(
             entry_data[CONF_ACCOUNT_NUMBER],
@@ -227,6 +232,7 @@ class OctopusIntelligentGoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         if not devices:
             raise NoDevicesError
+        api_key = await client.async_get_or_create_api_key()
         return auth, api_key
 
 
@@ -254,13 +260,14 @@ def _entry_title(device: dict[str, Any]) -> str:
 
 def _entry_data(
     auth: AuthToken,
-    api_key: str | None,
+    api_key: str,
     account_number: str,
     device: dict[str, Any],
 ) -> dict[str, Any]:
     if not auth.refresh_token:
         raise OctopusIntelligentGoAuthError("login response did not include a refresh token")
     data = {
+        CONF_API_KEY: api_key,
         CONF_REFRESH_TOKEN: auth.refresh_token,
         CONF_REFRESH_EXPIRES_IN: auth.refresh_expires_in,
         CONF_ACCOUNT_NUMBER: account_number,
@@ -269,21 +276,18 @@ def _entry_data(
         CONF_DEVICE_TYPE: device.get("deviceType"),
         CONF_PROVIDER: device.get("provider"),
     }
-    if api_key:
-        data[CONF_API_KEY] = api_key
     return data
 
 
 def _updated_auth_data(
     entry_data: dict[str, Any],
-    api_key: str | None,
+    api_key: str,
     auth: AuthToken,
 ) -> dict[str, Any]:
     if not auth.refresh_token:
         raise OctopusIntelligentGoAuthError("login response did not include a refresh token")
     data = dict(entry_data)
-    if api_key:
-        data[CONF_API_KEY] = api_key
+    data[CONF_API_KEY] = api_key
     data[CONF_REFRESH_TOKEN] = auth.refresh_token
     data[CONF_REFRESH_EXPIRES_IN] = auth.refresh_expires_in
     return data

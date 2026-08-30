@@ -84,6 +84,7 @@ def test_format_graphql_errors_humanizes_unknown_refusal_reason() -> None:
     "errors",
     [
         [{"extensions": {"errorCode": "KT-CT-1124"}}],
+        [{"extensions": {"errorCode": "KT-CT-1134"}}],
         [{"message": "JWT has expired"}],
         [{"extensions": {"errorDescription": "Refresh token expired"}}],
         [{"extensions": {"validationErrors": [{"inputPath": ["input", "password"]}]}}],
@@ -216,6 +217,73 @@ def test_authenticated_query_captures_spanish_account_api_key() -> None:
 
         assert client.api_key == "sk_live_discovered"
         assert updates == ["sk_live_discovered"]
+
+    asyncio.run(run_test())
+
+
+def test_get_or_create_api_key_reuses_existing_key() -> None:
+    async def run_test() -> None:
+        client = OctopusIntelligentGoClient(
+            None,  # type: ignore[arg-type]
+            api_key="existing-api-key",
+        )
+
+        async def unexpected_graphql(**kwargs: Any) -> dict[str, Any]:
+            raise AssertionError("an existing API key must not be regenerated")
+
+        client._authenticated_graphql = unexpected_graphql  # type: ignore[method-assign]
+
+        assert await client.async_get_or_create_api_key() == "existing-api-key"
+
+    asyncio.run(run_test())
+
+
+def test_get_or_create_api_key_generates_and_stores_missing_key() -> None:
+    async def run_test() -> None:
+        calls: list[dict[str, Any]] = []
+        updates: list[str] = []
+        client = OctopusIntelligentGoClient(
+            None,  # type: ignore[arg-type]
+            access_token="access-token",
+            on_api_key_updated=updates.append,
+        )
+
+        async def fake_graphql(**kwargs: Any) -> dict[str, Any]:
+            calls.append(kwargs)
+            return {
+                "data": {
+                    "regenerateSecretKey": {
+                        "key": "generated-api-key",
+                    }
+                }
+            }
+
+        client._authenticated_graphql = fake_graphql  # type: ignore[method-assign]
+
+        assert await client.async_get_or_create_api_key() == "generated-api-key"
+        assert client.api_key == "generated-api-key"
+        assert updates == ["generated-api-key"]
+        assert calls[0]["operation_name"] == "RegenerateSecretKey"
+        assert calls[0]["variables"] == {}
+        assert "regenerateSecretKey" in calls[0]["query"]
+
+    asyncio.run(run_test())
+
+
+def test_get_or_create_api_key_rejects_missing_key_in_response() -> None:
+    async def run_test() -> None:
+        client = OctopusIntelligentGoClient(
+            None,  # type: ignore[arg-type]
+            access_token="access-token",
+        )
+
+        async def fake_graphql(**kwargs: Any) -> dict[str, Any]:
+            return {"data": {"regenerateSecretKey": None}}
+
+        client._authenticated_graphql = fake_graphql  # type: ignore[method-assign]
+
+        with pytest.raises(OctopusIntelligentGoApiError, match="did not include a key"):
+            await client.async_get_or_create_api_key()
 
     asyncio.run(run_test())
 

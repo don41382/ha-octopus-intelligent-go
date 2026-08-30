@@ -62,14 +62,15 @@ Settings -> Devices & services -> Add integration -> Octopus Intelligent Go
 
 Sign in with the same email and password used at the
 [Octopus Energy Spain account portal](https://octopusenergy.es/login). The
-password is exchanged directly with the Spain Kraken API for an access token and
-refresh token, then discarded. Home Assistant stores only the refresh token.
-Token rotation is serialized and every rotated refresh token is saved to the
-config entry, preventing concurrent entity updates from invalidating each
-other's credentials.
+password is exchanged directly with the Spain Kraken API, then discarded. During
+setup, the integration retrieves the account's existing API key or generates one
+when none exists. Home Assistant stores that revocable API key and the current
+refresh token, but never the password. When Spain's seven-day refresh token
+expires, the integration uses the API key to obtain fresh tokens automatically.
 
 If an installation is already asking for authentication, open the integration's
 **Reconfigure** action and sign in once with the Spanish account credentials.
+This stores the durable API key so weekly reauthentication is no longer needed.
 Do not use the UK login at `auth.octopus.energy`; Spanish customer accounts use
 the separate `octopusenergy.es` login.
 
@@ -113,6 +114,11 @@ missing, hard-refresh the browser or clear Home Assistant's frontend cache.
 Immediate charging can fail if Octopus reports that the vehicle is unplugged or
 not at home. In that case, the service error should include the refusal reason
 returned by Kraken.
+
+The stored API key grants account access equivalent to an account API key. Keep
+Home Assistant backups and config-entry data private. Regenerating the key in
+Octopus invalidates the copy stored by this integration and requires
+reconfiguration.
 
 ## Disclaimer
 

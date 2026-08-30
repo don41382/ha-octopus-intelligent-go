@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect Octopus Intelligent Go",
-        "description": "Sign in with your Octopus Energy Spain account. Your password is used only to obtain a refresh token and is not stored. Refresh-token rotation is saved automatically.",
+        "description": "Sign in with your Octopus Energy Spain account. Your password is not stored. The integration retrieves or generates a revocable API key so it can renew authentication after the seven-day refresh token expires.",
         "data": {
           "email": "Email",
           "password": "Password"
@@ -11,7 +11,7 @@
       },
       "reauth_confirm": {
         "title": "Reauthenticate Octopus Intelligent Go",
-        "description": "Sign in with your Octopus Energy Spain account to replace the expired refresh token. Your password is not stored; future token rotations are saved automatically.",
+        "description": "Sign in once to repair authentication and store the account API key. Your password is not stored; future refresh-token expiry is handled automatically.",
         "data": {
           "email": "Email",
           "password": "Password"
@@ -19,7 +19,7 @@
       },
       "reconfigure": {
         "title": "Update Octopus Intelligent Go authentication",
-        "description": "Sign in with your Octopus Energy Spain account to obtain a fresh refresh token. Your password is not stored; future token rotations are saved automatically.",
+        "description": "Sign in once to update authentication and store the account API key. Your password is not stored; future refresh-token expiry is handled automatically.",
         "data": {
           "email": "Email",
           "password": "Password"

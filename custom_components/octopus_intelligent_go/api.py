@@ -29,6 +29,15 @@ mutation Login($input: ObtainJSONWebTokenInput!) {
 }
 """.strip()
 
+REGENERATE_SECRET_KEY_MUTATION = """
+mutation RegenerateSecretKey {
+  regenerateSecretKey {
+    __typename
+    key
+  }
+}
+""".strip()
+
 GET_ACCOUNT_LIST_QUERY = """
 query GetAccountList {
   viewer {
@@ -292,6 +301,25 @@ class OctopusIntelligentGoClient:
             for account in accounts
             if isinstance(account, dict) and isinstance(account.get("number"), str)
         ]
+
+    async def async_get_or_create_api_key(self) -> str:
+        """Return the viewer API key, generating one when none exists."""
+        if self._api_key:
+            return self._api_key
+
+        data = await self._authenticated_graphql(
+            operation_name="RegenerateSecretKey",
+            query=REGENERATE_SECRET_KEY_MUTATION,
+            variables={},
+        )
+        secret_key = data.get("data", {}).get("regenerateSecretKey")
+        api_key = secret_key.get("key") if isinstance(secret_key, dict) else None
+        if not isinstance(api_key, str) or not api_key:
+            raise OctopusIntelligentGoApiError(
+                "API-key generation response did not include a key"
+            )
+        self._set_api_key(api_key)
+        return api_key
 
     async def async_get_intelligent_go_devices(
         self,
@@ -579,7 +607,7 @@ def _errors_are_auth_related(errors: Any) -> bool:
         description = str(extensions.get("errorDescription") or "").upper()
         validation_errors = extensions.get("validationErrors") or []
 
-        if error_code in {"KT-CT-1124", "KT-CT-1138", "KT-CT-1139"}:
+        if error_code in {"KT-CT-1124", "KT-CT-1134", "KT-CT-1138", "KT-CT-1139"}:
             return True
         if "AUTH" in error_type or "UNAUTHENTICATED" in error_code:
             return True
