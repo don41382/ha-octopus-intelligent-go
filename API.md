@@ -168,6 +168,7 @@ For the first implementation, expose only these entities:
 | Entity | Home Assistant type | API operation | Field/action |
 | --- | --- | --- | --- |
 | Target/max charge percentage | `number` | `GetSmartFlexDevicePreferences`, `SetSmartFlexDevicePreferences` | Read/write schedule `max` percentage |
+| Charging mode | `select` | `GetSmartFlexDeviceState`, `GetSmartFlexDevicePreferences`, `FlexUpdateBoostCharge`, `UpdateDeviceSmartControl` | Orchestrates `Scheduled`, `Charge now`, and `Paused` from immediate-charge and suspension readback |
 | Start charging now | `button` | `FlexUpdateBoostCharge` | Writes `BOOST` |
 | Stop charging | `button` | `FlexUpdateBoostCharge` | Writes `CANCEL` |
 | Charging now | `sensor` | `GetSmartFlexDeviceState` | Normalizes the immediate-charge lifecycle state |
@@ -309,6 +310,22 @@ Resume SmartFlex control:
 `status.isSuspended` is the readback state. This controls Kraken SmartFlex; it
 does not override charging initiated independently by the vehicle or charger.
 An active boost may also need to be cancelled separately.
+
+### Combined Charging Mode
+
+The charging-mode select combines the boost lifecycle and `isSuspended`
+readback into one high-level control. An active boost takes precedence:
+
+- `starting`, `running`, or `stopping` reports **Charge now**.
+- No active boost with SmartFlex enabled reports **Scheduled**.
+- No active boost with SmartFlex suspended reports **Paused**.
+
+Selecting **Scheduled** cancels an active boost before unsuspending SmartFlex.
+Selecting **Charge now** unsuspends SmartFlex before starting a boost. Selecting
+**Paused** cancels an active boost before suspending SmartFlex. Mutations whose
+target state is already confirmed are skipped. The coordinator refreshes after
+writes, including after a partial failure, so the select always follows Kraken
+readback rather than an optimistic local state.
 
 ### Read Device State
 

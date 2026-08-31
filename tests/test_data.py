@@ -5,8 +5,13 @@ from __future__ import annotations
 import pytest
 
 from custom_components.octopus_intelligent_go.data import (
+    CHARGING_MODE_CHARGE_NOW,
+    CHARGING_MODE_PAUSED,
+    CHARGING_MODE_SCHEDULED,
     IntelligentGoData,
     as_float,
+    charging_mode_actions,
+    charging_mode_from_status,
     immediate_charge_active_from_state,
     immediate_charge_status_from_state,
     normalize_state,
@@ -60,6 +65,103 @@ def test_immediate_charge_status_from_state(
     assert immediate_charge_status_from_state(state) == expected
 
 
+@pytest.mark.parametrize(
+    ("status", "smart_control_enabled", "expected"),
+    [
+        ("starting", True, CHARGING_MODE_CHARGE_NOW),
+        ("running", False, CHARGING_MODE_CHARGE_NOW),
+        ("stopping", True, CHARGING_MODE_CHARGE_NOW),
+        ("stopped", True, CHARGING_MODE_SCHEDULED),
+        ("failed", True, CHARGING_MODE_SCHEDULED),
+        ("stopped", False, CHARGING_MODE_PAUSED),
+        ("failed", False, CHARGING_MODE_PAUSED),
+        (None, True, None),
+        ("stopped", None, None),
+    ],
+)
+def test_charging_mode_from_status(
+    status: str | None,
+    smart_control_enabled: bool | None,
+    expected: str | None,
+) -> None:
+    assert charging_mode_from_status(status, smart_control_enabled) == expected
+
+
+@pytest.mark.parametrize(
+    ("mode", "status", "smart_control_enabled", "expected"),
+    [
+        (CHARGING_MODE_SCHEDULED, "running", True, [("boost", "CANCEL")]),
+        (
+            CHARGING_MODE_SCHEDULED,
+            "running",
+            False,
+            [("boost", "CANCEL"), ("smart_control", "UNSUSPEND")],
+        ),
+        (CHARGING_MODE_SCHEDULED, "stopped", True, []),
+        (
+            CHARGING_MODE_SCHEDULED,
+            "stopped",
+            False,
+            [("smart_control", "UNSUSPEND")],
+        ),
+        (CHARGING_MODE_CHARGE_NOW, "stopped", True, [("boost", "BOOST")]),
+        (
+            CHARGING_MODE_CHARGE_NOW,
+            "stopped",
+            False,
+            [("smart_control", "UNSUSPEND"), ("boost", "BOOST")],
+        ),
+        (CHARGING_MODE_CHARGE_NOW, "running", True, []),
+        (
+            CHARGING_MODE_CHARGE_NOW,
+            "running",
+            False,
+            [("smart_control", "UNSUSPEND")],
+        ),
+        (CHARGING_MODE_CHARGE_NOW, "stopping", True, [("boost", "BOOST")]),
+        (
+            CHARGING_MODE_PAUSED,
+            "running",
+            True,
+            [("boost", "CANCEL"), ("smart_control", "SUSPEND")],
+        ),
+        (
+            CHARGING_MODE_PAUSED,
+            "stopped",
+            True,
+            [("smart_control", "SUSPEND")],
+        ),
+        (CHARGING_MODE_PAUSED, "stopped", False, []),
+    ],
+)
+def test_charging_mode_actions(
+    mode: str,
+    status: str,
+    smart_control_enabled: bool,
+    expected: list[tuple[str, str]],
+) -> None:
+    actions = charging_mode_actions(mode, status, smart_control_enabled)
+
+    assert [(action.operation, action.action) for action in actions] == expected
+
+
+@pytest.mark.parametrize(
+    ("mode", "status", "smart_control_enabled"),
+    [
+        ("unsupported", "stopped", True),
+        (CHARGING_MODE_SCHEDULED, None, True),
+        (CHARGING_MODE_SCHEDULED, "stopped", None),
+    ],
+)
+def test_charging_mode_actions_rejects_invalid_or_unavailable_state(
+    mode: str,
+    status: str | None,
+    smart_control_enabled: bool | None,
+) -> None:
+    with pytest.raises(ValueError):
+        charging_mode_actions(mode, status, smart_control_enabled)
+
+
 def test_intelligent_go_data_normalizes_device_payloads() -> None:
     data = IntelligentGoData(
         preferences_device={
@@ -89,6 +191,7 @@ def test_intelligent_go_data_normalizes_device_payloads() -> None:
     assert data.current_state == "BOOST_ACTIVE"
     assert data.immediate_charge_active is True
     assert data.immediate_charge_status == "running"
+    assert data.charging_mode == CHARGING_MODE_CHARGE_NOW
     assert data.smart_control_enabled is True
     assert data.state_of_charge == 56.7
     assert data.vehicle_charge_limit == 80.0
@@ -121,6 +224,7 @@ def test_intelligent_go_data_tolerates_malformed_payloads() -> None:
     assert data.current_state is None
     assert data.immediate_charge_active is None
     assert data.immediate_charge_status is None
+    assert data.charging_mode is None
     assert data.smart_control_enabled is None
     assert data.state_of_charge is None
     assert data.vehicle_charge_limit is None

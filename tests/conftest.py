@@ -25,6 +25,7 @@ class Platform(StrEnum):
 
     BUTTON = "button"
     NUMBER = "number"
+    SELECT = "select"
     SENSOR = "sensor"
     SWITCH = "switch"
 

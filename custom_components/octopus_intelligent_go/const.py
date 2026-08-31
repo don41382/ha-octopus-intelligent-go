@@ -9,6 +9,7 @@ DOMAIN = "octopus_intelligent_go"
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
     Platform.NUMBER,
+    Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
 ]

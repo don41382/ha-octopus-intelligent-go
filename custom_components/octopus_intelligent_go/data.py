@@ -55,6 +55,32 @@ IMMEDIATE_CHARGE_STOPPING_MARKERS = (
 
 IMMEDIATE_CHARGE_FAILED_MARKERS = ("ERROR", "FAILED", "REFUSED")
 
+CHARGING_MODE_SCHEDULED = "scheduled"
+CHARGING_MODE_CHARGE_NOW = "charge_now"
+CHARGING_MODE_PAUSED = "paused"
+CHARGING_MODES = (
+    CHARGING_MODE_SCHEDULED,
+    CHARGING_MODE_CHARGE_NOW,
+    CHARGING_MODE_PAUSED,
+)
+
+CHARGING_OPERATION_BOOST = "boost"
+CHARGING_OPERATION_SMART_CONTROL = "smart_control"
+
+IMMEDIATE_CHARGE_ACTIVE_STATUSES = {"starting", "running"}
+IMMEDIATE_CHARGE_IN_PROGRESS_STATUSES = {
+    *IMMEDIATE_CHARGE_ACTIVE_STATUSES,
+    "stopping",
+}
+
+
+@dataclass(frozen=True)
+class ChargingModeAction:
+    """One Kraken mutation needed to reach a charging mode."""
+
+    operation: str
+    action: str
+
 
 @dataclass
 class IntelligentGoData:
@@ -99,6 +125,14 @@ class IntelligentGoData:
     def immediate_charge_status(self) -> str | None:
         """Return a user-facing immediate-charging lifecycle state."""
         return immediate_charge_status_from_state(self.current_state)
+
+    @property
+    def charging_mode(self) -> str | None:
+        """Return the combined immediate/scheduled charging mode."""
+        return charging_mode_from_status(
+            self.immediate_charge_status,
+            self.smart_control_enabled,
+        )
 
     @property
     def smart_control_enabled(self) -> bool | None:
@@ -168,6 +202,61 @@ def immediate_charge_status_from_state(value: str | None) -> str | None:
     if immediate_charge_active_from_state(state):
         return "running"
     return "stopped"
+
+
+def charging_mode_from_status(
+    immediate_charge_status: str | None,
+    smart_control_enabled: bool | None,
+) -> str | None:
+    """Derive the combined charging mode from Kraken readback."""
+    if immediate_charge_status is None or smart_control_enabled is None:
+        return None
+    if immediate_charge_status in IMMEDIATE_CHARGE_IN_PROGRESS_STATUSES:
+        return CHARGING_MODE_CHARGE_NOW
+    if smart_control_enabled:
+        return CHARGING_MODE_SCHEDULED
+    return CHARGING_MODE_PAUSED
+
+
+def charging_mode_actions(
+    charging_mode: str,
+    immediate_charge_status: str | None,
+    smart_control_enabled: bool | None,
+) -> tuple[ChargingModeAction, ...]:
+    """Plan the minimum ordered mutations needed to reach a charging mode."""
+    if charging_mode not in CHARGING_MODES:
+        raise ValueError(f"Unsupported charging mode: {charging_mode}")
+    if immediate_charge_status is None or smart_control_enabled is None:
+        raise ValueError("Charging state is unavailable")
+
+    actions: list[ChargingModeAction] = []
+    immediate_charge_active = (
+        immediate_charge_status in IMMEDIATE_CHARGE_ACTIVE_STATUSES
+    )
+
+    if charging_mode == CHARGING_MODE_SCHEDULED:
+        if immediate_charge_active:
+            actions.append(ChargingModeAction(CHARGING_OPERATION_BOOST, "CANCEL"))
+        if not smart_control_enabled:
+            actions.append(
+                ChargingModeAction(CHARGING_OPERATION_SMART_CONTROL, "UNSUSPEND")
+            )
+    elif charging_mode == CHARGING_MODE_CHARGE_NOW:
+        if not smart_control_enabled:
+            actions.append(
+                ChargingModeAction(CHARGING_OPERATION_SMART_CONTROL, "UNSUSPEND")
+            )
+        if not immediate_charge_active:
+            actions.append(ChargingModeAction(CHARGING_OPERATION_BOOST, "BOOST"))
+    else:
+        if immediate_charge_active:
+            actions.append(ChargingModeAction(CHARGING_OPERATION_BOOST, "CANCEL"))
+        if smart_control_enabled:
+            actions.append(
+                ChargingModeAction(CHARGING_OPERATION_SMART_CONTROL, "SUSPEND")
+            )
+
+    return tuple(actions)
 
 
 def as_float(value: Any) -> float | None:

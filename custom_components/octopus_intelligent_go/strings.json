@@ -41,6 +41,16 @@
     }
   },
   "entity": {
+    "select": {
+      "charging_mode": {
+        "name": "Charging",
+        "state": {
+          "scheduled": "Scheduled",
+          "charge_now": "Charge now",
+          "paused": "Paused"
+        }
+      }
+    },
     "sensor": {
       "immediate_charge_status": {
         "name": "Charging now",

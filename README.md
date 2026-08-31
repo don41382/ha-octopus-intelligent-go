@@ -9,8 +9,9 @@ immediate charging.
 ## Features
 
 - Set the target charge percentage
-- Start or cancel immediate boost charging with a switch
-- Allow or suspend Octopus smart charging with a switch
+- Choose Scheduled, Charge now, or Paused from one charging-mode control
+- Start or cancel immediate boost charging with dedicated buttons
+- Allow or suspend Octopus smart charging with a dedicated switch
 - Read the current charging/device state
 - Read the current vehicle state of charge
 - Read the current vehicle charge limit
@@ -83,6 +84,7 @@ first compatible Intelligent Go device returned by the API.
 | Entity | Type | Description |
 | --- | --- | --- |
 | Target charge percentage | Number | Sets the desired maximum charge percentage |
+| Charging | Select | Chooses `Scheduled`, `Charge now`, or `Paused` and shows the live immediate-charging status |
 | Start charging now | Button | Starts immediate charging |
 | Stop charging | Button | Stops immediate charging |
 | Charging now | Sensor | Reports `stopped`, `starting`, `running`, `stopping`, or `failed` |
@@ -92,6 +94,28 @@ first compatible Intelligent Go device returned by the API.
 | Vehicle charge limit | Sensor | Current vehicle-side charge limit |
 
 ## Automation Services
+
+The **Charging** select is the preferred high-level control. It uses Home
+Assistant's standard `select.select_option` action with the raw options
+`scheduled`, `charge_now`, and `paused`. It applies only the mutations required
+to reach the requested mode:
+
+- **Scheduled** stops an active boost and enables SmartFlex planning.
+- **Charge now** enables SmartFlex control and starts an immediate boost.
+- **Paused** stops an active boost and suspends SmartFlex planning.
+
+For example:
+
+```yaml
+action: select.select_option
+target:
+  entity_id: select.YOUR_DEVICE_charging_mode
+data:
+  option: paused
+```
+
+The dedicated switch, buttons, and integration services remain available for
+existing automations and lower-level control.
 
 The **Allow scheduled charging** switch works with Home Assistant's standard
 `switch.turn_on` and `switch.turn_off` actions. The immediate-charging buttons
